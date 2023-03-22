@@ -12,7 +12,7 @@ const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
     password: 'root@123',
-    database: 'car_pooling'
+    database: 'vehicle_pooling'
 });
 
 db.connect((err) => {
@@ -26,7 +26,7 @@ db.connect((err) => {
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
-    db.query('SELECT * FROM users WHERE username = ?', [username], (err, results) => {
+    db.query('SELECT * FROM user WHERE username = ? and password=?', [username, password], (err, results) => {
         if (err) {
             console.log('Error while fetching user:', err);
             res.status(500).send('Internal server error');
@@ -55,13 +55,27 @@ app.post('/rides', (req, res) => {
     const id = req.body.id;
 
     console.log(id);
-    db.query('insert into rides(Vehicle_Type, Route, Home_Location, Destination,User_Id,seats_Available,Timings) VALUES (?,?,?,?,?,?,?)', [vehicleType, route, homeLocation, destination, id, seatsAvailable, timings], (err, results) => {
+    db.query('insert into rides(user_id,vehicle_type, home_location, Destination,Route,seats_available,timings) VALUES (?,?,?,?,?,?,?)', [id, vehicleType, homeLocation, destination, route, seatsAvailable, timings], (err, results) => {
         if (err) {
             console.log('Error while fetching user:', err);
             res.status(500).send('Internal server error');
         }
         else {
             res.send({ message: 'Ride Added.' })
+        }
+
+    });
+});
+app.post('/register', (req, res) => {
+    const { username, password, role } = req.body;
+
+    db.query('insert into user(username,password,role) VALUES (?,?,?)', [username, password, role], (err, results) => {
+        if (err) {
+            console.log('Error while registering:', err);
+            res.status(500).send('Internal server error');
+        }
+        else {
+            res.send({ message: 'Registered successfully' })
         }
 
     });
@@ -78,54 +92,41 @@ app.get('/ridesList', (req, res) => {
 });
 app.put('/requestToJoin/:rideId', (req, res) => {
     const ride_id = req.params.rideId;
-    const user_Id=req.body.userId;
-    const seatsAvailable=req.body.seats_Available;
-    const timings=req.body.Timings;
-    console.log(user_Id,seatsAvailable,timings);
+
     db.query('UPDATE rides SET Status = ? WHERE ride_id = ?', ['Requested', ride_id], (err, results) => {
         if (err) {
             console.log('Error while updating ride status:', err);
             res.status(500).send('Internal server error');
         } else {
-            console.log('Ride request added:', ride_id);
-            db.query('insert into requests(ride_id,user_id,seats_requested,timings) values(?,?,?,?)',[ride_id,user_Id,seatsAvailable,timings],(err, results) =>{
-                if (err) {
-                    console.log('Error while inserting requests:', err);
-                    res.status(500).send('Internal server error');
-                }
-                else{
-                    res.status(200).send('Ride request inserted');
+            console.log('Ride request updated:', ride_id);
 
-                }
-            }
-            )
+            res.status(200).send('Ride request updated');
         }
     });
 });
-app.put('/requestStatus/:request_id', (req, res) => {
-    const request_id = req.params.request_id;
+app.put('/requestStatusApprove/:ride_id', (req, res) => {
+    const ride_id = req.params.ride_id;
     const status = "Approved";
-    const ride_id = req.body.ride_id;
-
-    // console.log(ride_id)
-    db.query('UPDATE requests SET status = ? WHERE request_id = ?', [status, request_id], (err, results) => {
+    db.query('UPDATE rides SET status = ? WHERE ride_id = ?', [status, ride_id], (err, results) => {
         if (err) {
             console.log('Error while updating ride status:', err);
-            res.status(500).send('Internal server error');
+            res.status(500).send('Internal server error1');
         } else {
-            console.log('Ride request Approved:', request_id);
-            db.query('Select seats_Available from rides where ride_id=?',ride_id, (err, results) => {
+            console.log('Ride request Approved:', ride_id);
+            db.query('Select seats_available from rides where ride_id=?', ride_id, (err, results) => {
                 if (err) {
                     console.log('Error fetching seats available:', err);
-                    res.status(500).send('Internal server error');
+                    res.status(500).send('Internal server error2');
                 }
                 else {
-                    console.log("seats:",results.data)
-                    const seats_Available = results.data - 1
-                    db.query('update rides set seats_Available=? where ride_id=ride_id', [seats_Available], (err, results) => {
+                    console.log("seats:", results[0].seats_available)
+
+                    const seats_Available = results[0].seats_available - 1
+                    console.log(seats_Available)
+                    db.query('update rides set seats_available=? where ride_id=?', [seats_Available, ride_id], (err, results) => {
                         if (err) {
                             console.log('Error while updating ride status:', err);
-                            res.status(500).send('Internal server error');
+                            res.status(500).send('Internal server erro3');
                         }
                         else {
                             res.status(200).send('Ride request approved');
@@ -133,30 +134,32 @@ app.put('/requestStatus/:request_id', (req, res) => {
 
                     })
                 }
-        })
+            })
 
         }
     });
 });
-app.put('/requestStatusReject/:request_id', (req, res) => {
-    const request_id = req.params.request_id;
+app.put('/requestStatusReject/:ride_id', (req, res) => {
+    const ride_id = req.params.ride_id;
     const status = "Rejected";
-
-    console.log(status)
-    db.query('UPDATE requests SET status = ? WHERE id = ?', [status, request_id], (err, results) => {
+    db.query('UPDATE rides SET status = ? WHERE ride_id = ?', [status, ride_id], (err, results) => {
         if (err) {
             console.log('Error while updating ride status:', err);
-            res.status(500).send('Internal server error');
+            res.status(500).send('Internal server error1');
         } else {
-            console.log('Ride request Approved:', request_id);
-            res.status(200).send('Ride request approved');
+            console.log('Ride request Rejected:', ride_id);
+
+            res.status(200).send('Ride request rejected');
+
         }
+
+
     });
 });
 
 app.get('/requestsList', (req, res) => {
-    db.query(`select rides.ride_id,rides.Vehicle_Type,rides.Home_Location,rides.Route,rides.Destination,rides.Timings,rides.seats_Available,rides.Timings,requests.Status,requests.request_id from rides 
-     join requests on rides.User_Id=requests.user_id where rides.Status="Requested"`, (error, results) => {
+    db.query(`select * from rides 
+      where status="Requested"`, (error, results) => {
         if (error) {
             console.error(error);
             res.status(500).send('Server error');
