@@ -16,7 +16,6 @@ useEffect(() => {
         console.error(error);
       }
     };
-
     fetchRequests();
   }, []);
   const handleStatusApprove=async(request_id,ride_id,e)=>{
